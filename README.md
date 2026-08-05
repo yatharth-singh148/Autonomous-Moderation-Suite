@@ -1,4 +1,4 @@
-# Autonomous Multi-Platform Community Moderation & Safety Suite
+# Autonomous Community Moderation & Safety Suite
 
 ## Overview
 
