@@ -61,6 +61,14 @@ flowchart LR
   end
 ```
 
+## Cloud Infrastructure & Disaster Recovery
+
+The production suite operates across a distributed, high-availability cloud pipeline designed for minimal latency and system resilience:
+
+- **Edge Telemetry Gateway**: The primary API handling high-frequency telemetry and immediate extension requests is hosted on **Cloudflare Workers/Pages** for ultra-low latency edge validation.
+- **Background Processing & Crawlers**: The autonomous deep crawler network and fallback worker nodes run on **Render** to execute asynchronous, high-compute background tasks.
+- **Disaster Recovery & Data Persistence**: To safeguard system integrity against malicious tampering or catastrophic loss, the core threat database is snapshot-backed to **Backblaze B2** daily on a rolling 7-day retention cycle for fast point-in-time recovery.
+
 ## Tech Stack
 
 - JavaScript / TypeScript-compatible React frontend
