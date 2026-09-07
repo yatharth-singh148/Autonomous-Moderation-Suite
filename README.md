@@ -2,88 +2,314 @@
 
 ## Overview
 
-This repository documents an Autonomous Moderation Suite designed to protect distributed communities across web, browser extension, and social gaming environments. The system is architected as a layered telemetry and scoring pipeline that emphasizes deterministic probability math, not opaque AI-based automation, for final threat classification.
+The Autonomous Moderation Suite is an autonomous community moderation and safety ecosystem designed to identify and respond to suspicious activity across web, browser-extension, and social-gaming environments.
 
-The product ecosystem includes three primary subsystems:
+The system is architected as a distributed telemetry, analysis, and risk-scoring pipeline. Separate components are responsible for collecting signals, performing network analysis, evaluating risk, persisting threat intelligence, and recovering from infrastructure failures.
 
-- Client-side sensor layer: browser extension implants and page-level DOM scanning for live telemetry collection,
-- Cloud gateway and scoring engine: deterministic probability-based risk math, noise filtering, and decision enforcement,
-- Backend intelligence layer: async crawler engines, threat database persistence, and human-in-the-loop review for ambiguous targets.
+A core design principle is deterministic and explainable risk scoring rather than relying on an opaque AI model for final threat classification. Individual signals and thresholds can therefore be inspected, adjusted, and refined as new behavioral patterns are discovered.
 
-This public repository captures the ecosystem architecture, onboarding flow, and integration references. Sensitive assets such as private extension payloads, deploy keys, API secrets, and infrastructure configuration are intentionally excluded.
+The ecosystem consists of three primary subsystems:
+
+- Client-side sensor layer: browser extension sensors, page-level telemetry, moderation dashboards, and game integrations.
+- Cloud gateway and scoring layer: request validation, deterministic probability-based risk evaluation, noise filtering, and decision enforcement.
+- Backend intelligence layer: asynchronous crawler engines, network analysis, threat database persistence, alerting, and human-in-the-loop review for ambiguous targets.
+
+---
+
+## Architecture
+
+The production ecosystem follows a layered distributed architecture:
+
+![Autonomous Moderation Suite Distributed Ecosystem & Microservices Architecture](assets/Architecture.png)
+
+At a high level, the system can be understood through four layers:
+
+1. Client / Sensor Layer
+   Collects telemetry and initiates moderation checks from browsers, dashboards, and game environments.
+
+2. Edge / Ingestion Layer
+   Receives, validates, and routes incoming requests before they reach heavier processing components.
+
+3. Distributed Compute Layer
+   Performs scheduled crawling, relationship analysis, group analysis, network mapping, and probabilistic risk evaluation.
+
+4. Persistence & Recovery Layer
+   Stores threat intelligence, maintains the master ledger, and provides automated disaster-recovery mechanisms.
+
+The architecture was designed around practical constraints including external API rate limits, restricted scanning windows, intermittent service availability, and the need to process several workloads independently.
+
+---
 
 ## Core Features
 
-- Distributed telemetry fabric: browser extension sensors, web dashboard tools, and game subsystem hooks feed the suite with contextual signal data.
-- Deterministic probability scoring: the gateway applies explicit group/friend/bio/name weights and hard-limit rules to classify threat tiers.
-- Real-time enforcement: secure API endpoints and webhook outputs enable rapid action, including game-side auto-removals and operational alerts.
-- Autonomous crawler network: async Node/Render workers map hidden community hubs, intersect common members, and refresh threat intelligence on schedule.
-- Quarantine and review workflow: borderline targets are isolated and batched for human validation before being committed to the master database.
-- Enterprise integration references: documented Lua, webhook, and telemetry examples for safe deployment in moderated environments.
+### Distributed Telemetry Fabric
+
+Multiple independent sources can feed information into the moderation pipeline:
+
+- Browser extension sensors
+- Moderation dashboards
+- Game-environment integrations
+- Page-level telemetry
+- Administrative scan requests
+
+This allows the suite to operate across different environments while maintaining a common risk-analysis pipeline.
+
+### Deterministic Risk Scoring
+
+The gateway and scoring engine use explicit probability and weighting rules rather than an opaque AI model for final threat classification.
+
+Signals can include:
+
+- Flagged group associations
+- Friend and network relationships
+- Profile information
+- Bio and display-name indicators
+- Convergent threat signals
+- Previously identified associations
+
+The objective is to make classifications explainable and reduce over-flagging caused by isolated or accidental associations.
+
+### Autonomous Crawler Network
+
+Background workers continuously build and refresh threat intelligence.
+
+The crawler network operates on scheduled intervals and performs deeper scans of community relationships, group memberships, and network associations.
+
+A scheduled deep crawler performs heavier background processing and continuously expands the system's threat intelligence database.
+
+### Network-Based Detection
+
+The suite does not rely exclusively on direct indicators such as group membership.
+
+The system can analyze relationships between accounts and previously identified threats. This helps identify actors who deliberately avoid obvious indicators in order to bypass simpler moderation systems.
+
+### Resilience & Fault Recovery
+
+The distributed architecture incorporates:
+
+- Scheduled workers
+- Timed retries
+- Caching
+- Fallback processing nodes
+- Fault-recovery mechanisms
+- Automated database backups
+- Disaster-recovery storage
+
+The objective is to prevent the failure of an individual component or temporary external-service limitation from bringing down the complete moderation pipeline.
+
+### Quarantine & Human Review
+
+High-confidence detections can proceed through automated enforcement and alerting.
+
+Borderline cases can instead be isolated and reviewed before being committed to the primary threat database, reducing the risk of automatically acting on uncertain signals.
+
+### Real-Time Enforcement & Alerting
+
+Threat intelligence can be distributed through:
+
+- Operational webhooks
+- Moderation dashboards
+- Game-side integrations
+- Operational alert channels
+
+Confirmed threats can therefore be surfaced to moderators or acted upon automatically in supported environments.
+
+---
 
 ## System Pipeline
 
-1. Client sensors collect signals in browser and game environments.
-   - The Chrome/Firefox extension uses zero-touch DOM injection and list scanning to identify flagged profiles, terminated relationships, and network associations.
-   - Utility dashboards and game subsystems generate scan requests, group probes, and player risk feeds.
-2. Edge gateway receives observations and applies probability scoring.
-   - The gateway API computes weighted scores from flagged groups, friends, bio keywords, and display name signals.
-   - It prioritizes deterministic math rules to avoid over-flagging accidental associations.
-3. Scoring engine evaluates the probability profile and enforces tiered outcomes.
-   - High-confidence threats are classified immediately and routed to enforcement and alerting channels.
-   - Ambiguous cases are placed into quarantine and escalated for human review rather than being auto-committed.
-4. Threat database commits validated actors and network hubs.
-   - Confirmed risks feed the master ledger and update distribution back to client sensors for improved detection.
-   - The system maintains association graphs across groups, friends, and terminated accounts for ongoing signal refinement.
-5. Alerting and enforcement outputs are dispatched.
-   - Discord intelligence webhooks and dashboard reports deliver actionable operational intelligence.
-   - Game integrations can remove confirmed malicious actors automatically in real time.
+### 1. Client & Sensor Layer
 
-## System Architecture Diagram
+The suite can receive information from several distributed entry points.
 
-```mermaid
-flowchart LR
-  subgraph Client
-    A[Browser Extension] -->|Telemetry + Threat Feed| B[Gateway API]
-    C[Utility Website] -->|Scan Requests| B
-    D[Game Network Integration] -->|Realtime Match / Player Check| B
-  end
+Browser extensions can collect relevant page-level telemetry and identify associations such as flagged profiles and network relationships.
 
-  subgraph Cloud
-    B -->|Validate Target| E[AI Inference Engine]
-    E -->|Risk Score + Classification| F[Threat Database]
-    F -->|Enriched Alerts| G[Discord Intelligence Webhooks]
-  end
+Moderation dashboards and game integrations can also initiate account or player risk checks.
 
-  subgraph Feedback
-    F -->|Threat Signals| A
-    F -->|Realtime Actions| D
-  end
-```
+These observations are passed to the edge gateway for validation and processing.
 
-## Cloud Infrastructure & Disaster Recovery
+### 2. Edge Gateway & Ingestion
 
-The production suite operates across a distributed, high-availability cloud pipeline designed for minimal latency and system resilience:
+Incoming requests first reach the edge gateway.
 
-- **Edge Telemetry Gateway**: The primary API handling high-frequency telemetry and immediate extension requests is hosted on **Cloudflare Workers/Pages** for ultra-low latency edge validation.
-- **Background Processing & Crawlers**: The autonomous deep crawler network and fallback worker nodes run on **Render** to execute asynchronous, high-compute background tasks.
-- **Disaster Recovery & Data Persistence**: To safeguard system integrity against malicious tampering or catastrophic loss, the core threat database is snapshot-backed to **Backblaze B2** daily on a rolling 7-day retention cycle for fast point-in-time recovery.
+The gateway is responsible for:
 
-## Tech Stack
+- Request validation
+- Payload verification
+- Lightweight filtering
+- Routing
+- Passing relevant observations to the processing layer
 
-- JavaScript / TypeScript-compatible React frontend
-- Vite application pipeline
-- Tailwind CSS for scalable UI styling
-- Framer Motion for motion-driven information presentation
-- Web Extension manifest architecture implied for browser telemetry and local scanning
-- Python-backed API endpoints and inference services (public repo contains integration documents, not full backend source)
-- Probabilistic math for risk classification and content inspection
-- Cloud telemetry and edge gateway components for low-latency validation
+Keeping the client-facing entry point separate from heavier analysis allows resource-intensive workloads to remain isolated from incoming requests.
 
-## Folder Structure
+### 3. Distributed Compute Layer
+
+The compute layer contains several workers with different responsibilities.
+
+These include:
+
+- Scheduled crawling
+- Deep network exploration
+- Group relationship analysis
+- Network association analysis
+- Risk evaluation
+- Fallback processing
+
+The workloads are intentionally separated because external platform APIs impose practical constraints such as rate limits and restricted scanning windows.
+
+Instead of relying on one monolithic process, the suite distributes workloads across independent workers and uses caching, retries, and fallback paths to improve resilience and maximize useful processing within those constraints.
+
+### 4. Risk Evaluation
+
+Signals gathered by the different processing workers are passed to the risk engine.
+
+The risk engine combines multiple signals into an explicit risk evaluation and classification.
+
+Rather than treating a single association as definitive evidence, the system can combine multiple converging indicators to determine whether a target should be considered low-risk, suspicious, or high-confidence.
+
+This approach also makes the detection logic easier to inspect and refine when new behavioral patterns are discovered.
+
+### 5. Threat Intelligence Persistence
+
+Validated threat intelligence is persisted in the central PostgreSQL database.
+
+The database maintains information such as:
+
+- Threat signatures
+- Flagged accounts
+- Community associations
+- Network relationships
+- Detection signals
+
+Threat intelligence can subsequently be distributed back to supported sensors and integrations, allowing newly discovered information to improve future detection.
+
+### 6. Alerting & Enforcement
+
+Processed threat intelligence can be distributed through operational channels and integrated environments.
+
+Depending on the deployment, outputs may include:
+
+- Operational alerts
+- Moderation dashboard reports
+- Threat intelligence feeds
+- Game-side enforcement actions
+
+This allows the system to move from passive detection toward autonomous moderation workflows.
+
+---
+
+## Engineering Challenges & Design Decisions
+
+### API Constraints & Rate Limits
+
+External platform APIs introduced practical limitations, particularly rate limits and restricted scanning windows.
+
+Instead of allowing these limitations to dictate the entire architecture, the suite distributes work across independent workers and uses scheduled processing, caching, retries, and fallback mechanisms.
+
+This allows the system to continue making progress even when individual requests or workers encounter temporary limitations.
+
+### Detection Blind Spots
+
+The original detection approach relied heavily on direct group-based indicators.
+
+During operation, it became apparent that some actors could deliberately avoid suspicious group memberships, allowing them to bypass that particular detection signal.
+
+The detection pipeline was therefore extended to also consider network relationships.
+
+For example, an account could receive an additional risk signal when a sufficiently high proportion of its immediate network had already been flagged.
+
+This allowed the suite to identify certain accounts that would otherwise have remained invisible to the original detection approach.
+
+### Distributed Failure Handling
+
+A failure in one processing component should not necessarily stop the entire moderation pipeline.
+
+The suite therefore separates major workloads into independent workers and maintains fallback processing paths.
+
+Timed retries and caching also help reduce the impact of transient service failures and repeated requests.
+
+### Ambiguous Detections
+
+Fully autonomous enforcement introduces the risk of acting on uncertain signals.
+
+The suite therefore allows borderline detections to be isolated for human validation instead of immediately treating every uncertain result as a confirmed threat.
+
+This provides a balance between automation and operational safety.
+
+---
+
+## Deployment & Infrastructure
+
+The production suite operates across a distributed cloud pipeline designed for low-latency request handling and resilient background processing.
+
+### Edge Telemetry Gateway
+
+The primary client-facing API and edge validation layer is hosted using Cloudflare Workers / Pages for low-latency request handling and lightweight edge processing.
+
+### Background Processing & Crawlers
+
+The autonomous crawler network and fallback worker nodes run as asynchronous background services on Render.
+
+These workers handle scheduled scans, network traversal, relationship analysis, and other processing tasks that are better suited to background execution.
+
+### Data Persistence & Disaster Recovery
+
+The core threat intelligence database is maintained using PostgreSQL through Supabase.
+
+Automated database snapshots are retained in separate disaster-recovery storage using a rolling retention strategy, providing a recovery path in the event of primary-storage loss or corruption.
+
+---
+
+## Deployment Outcome
+
+The system has been actively deployed and continuously expanding its threat intelligence database.
+
+As of September 2026, the suite has algorithmically flagged more than **22,500 accounts**, with the count continuing to grow through its scheduled crawler network.
+
+The system has operated without direct infrastructure operating expenditure, relying on distributed cloud services, scheduled workers, caching, retries, fallback processing, and automated recovery mechanisms.
+
+The 22,500+ figure represents accounts **flagged by the system**, rather than a claim that every flagged account has been independently confirmed as malicious.
+
+---
+
+## Technology
+
+### Frontend
+
+- React
+- Vite
+- Tailwind CSS
+- Framer Motion
+
+### Cloud & Infrastructure
+
+- Cloudflare Workers / Pages
+- Render
+- PostgreSQL
+- Supabase
+- Backblaze B2
+
+### Processing
+
+- JavaScript / TypeScript
+- Python
+- Scheduled asynchronous workers
+- Deterministic probabilistic scoring
+- Network and relationship analysis
+
+### Integrations
+
+- Browser extension APIs
+- Webhooks
+- Game telemetry
+- Moderation dashboards
+
+---
+
+## Repository Structure
 
 ```text
-scout-landing/
+autonomous-moderation-suite/
   ├─ public/                 # Static assets and favicon
   ├─ src/                    # Landing page source code
   │   ├─ assets/             # Visual assets used by page components
@@ -92,12 +318,16 @@ scout-landing/
   │   ├─ main.jsx            # Vite entry point
   │   ├─ index.css           # Global styling and theme rules
   │   └─ App.css             # Additional style declarations
+  ├─ assets/
+  │   └─ Architecture.png   # Distributed system architecture diagram
   ├─ package.json            # Frontend dependencies and scripts
   ├─ tailwind.config.js      # Tailwind utility configuration
   ├─ postcss.config.js       # PostCSS setup
   ├─ vite.config.js          # Vite build configuration
   └─ README.md               # Project documentation
 ```
+
+---
 
 ## Setup
 
@@ -125,17 +355,29 @@ npm run build
 npm run preview
 ```
 
+---
+
 ## Usage
 
 - Launch the Vite application to review the public-facing landing experience.
 - Review the `src/components/Architecture.jsx` section for the multi-phase distributed detection flow.
-- Review the `src/components/DeveloperIntegration.jsx` example for Lua / game telemetry integration and webhook logging patterns.
-- Use this repository as the public interface layer while private cloud services and extension payloads remain separated for operational security.
+- Review the `src/components/DeveloperIntegration.jsx` example for game telemetry integration and webhook logging patterns.
+- Use this repository as the public interface and architecture layer while private cloud services and operational assets remain separated.
+
+---
 
 ## Notes for Recruiters & Enterprise Review
 
-This project is designed as a secure enterprise engineering artifact. The public repository provides the landing portal, architecture narrative, integration reference, and developer flows while preserving the confidentiality of production deployment details.
+This project is designed as a secure enterprise-oriented engineering artifact.
+
+The public repository provides the landing portal, architecture narrative, integration references, and developer flows while preserving the confidentiality of production deployment details.
+
+The production ecosystem contains additional operational components and infrastructure that are intentionally not included in this repository.
+
+---
 
 ## Privacy & Security
 
-Core production deployment credentials, API secrets, private infrastructure configurations, and sensitive extension code are intentionally omitted from this public repo to protect the system, developers, and end users.
+Core production deployment credentials, API secrets, private infrastructure configurations, sensitive extension code, and operational deployment identifiers are intentionally omitted from this public repository.
+
+This separation allows the architecture and engineering principles of the system to be documented without exposing operational infrastructure or information that could compromise the safety of the system or its developers.
